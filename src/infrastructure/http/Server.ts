@@ -14,7 +14,7 @@ export class Server {
   }
 
   private routes() {
-    this.app.get("/sensores", (req, res) => {
+    this.app.get("/sensors", (req, res) => {
       res.json(this.sensorService.getSensorData());
     });
 
