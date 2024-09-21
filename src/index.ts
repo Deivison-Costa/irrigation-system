@@ -20,7 +20,7 @@ const mqttOptions = {
   ca: [caCert],
 };
 
-new MqttClient(sensorService, mqttUrl, mqttOptions);
+const mqttClient = new MqttClient(sensorService, mqttUrl, mqttOptions);
 
-const server = new Server(sensorService);
+const server = new Server(sensorService, mqttClient);
 server.start(3000);

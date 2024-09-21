@@ -10,6 +10,8 @@ export class MqttClient {
   private longitude: number | null = null;
   private altitude: number | null = null;
 
+  private errorMessages: string[] = [];
+
   constructor(
     sensorService: SensorService,
     url: string,
@@ -83,6 +85,9 @@ export class MqttClient {
       case "sensors/altitude":
         this.altitude = parseFloat(data);
         break;
+      case "sensors/errors":
+        this.errorMessages.push(data);
+        break;
     }
 
     if (Object.keys(updatedData).length > 0) {
@@ -100,5 +105,9 @@ export class MqttClient {
         this.altitude,
       );
     }
+  }
+
+  public getErrorMessages(): string[] {
+    return this.errorMessages;
   }
 }

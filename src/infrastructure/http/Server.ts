@@ -1,18 +1,25 @@
 import express from "express";
 import { SensorService } from "../../core/services/SensorService";
+import { MqttClient } from "../mqtt/MqttClient";
 
 export class Server {
   private app = express();
   private sensorService: SensorService;
+  private mqttClient: MqttClient;
 
-  constructor(sensorService: SensorService) {
+  constructor(sensorService: SensorService, mqttClient: MqttClient) {
     this.sensorService = sensorService;
+    this.mqttClient = mqttClient;
     this.routes();
   }
 
   private routes() {
     this.app.get("/sensores", (req, res) => {
       res.json(this.sensorService.getSensorData());
+    });
+
+    this.app.get("/errors", (req, res) => {
+      res.json(this.mqttClient.getErrorMessages());
     });
   }
 
