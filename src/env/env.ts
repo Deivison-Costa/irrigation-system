@@ -20,6 +20,7 @@ const envSchema = z.object({
         message: "EMQX_PATH_CA não aponta para um arquivo existente",
       },
     ),
+  OPEN_WEATHER_API_KEY: z.string().min(1),
 });
 
 const env = envSchema.parse(process.env);

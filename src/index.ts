@@ -1,10 +1,13 @@
 import { SensorService } from "./core/services/SensorService";
 import { MqttClient } from "./infrastructure/mqtt/MqttClient";
 import { Server } from "./infrastructure/http/Server";
+import { SensorRepository } from "./infrastructure/repositories/SensorRepository"; // Importa o repositório
 import * as fs from "fs";
 import env from "./env/env";
 
-const sensorService = new SensorService();
+const sensorRepository = new SensorRepository();
+
+const sensorService = new SensorService(sensorRepository);
 
 const caFilePath = env.EMQX_PATH_CA;
 const caCert = fs.readFileSync(caFilePath);

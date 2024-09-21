@@ -6,6 +6,10 @@ export class MqttClient {
   private client: mqtt.MqttClient;
   private sensorService: SensorService;
 
+  private latitude: number | null = null;
+  private longitude: number | null = null;
+  private altitude: number | null = null;
+
   constructor(
     sensorService: SensorService,
     url: string,
@@ -30,6 +34,9 @@ export class MqttClient {
       "sensors/luminosity",
       "sensors/pressure",
       "sensors/lm393",
+      "sensors/latitude",
+      "sensors/longitude",
+      "sensors/altitude",
       "sensors/errors",
     ];
 
@@ -67,8 +74,31 @@ export class MqttClient {
       case "sensors/lm393":
         updatedData.soilMoisture = parseFloat(data);
         break;
+      case "sensors/latitude":
+        this.latitude = parseFloat(data);
+        break;
+      case "sensors/longitude":
+        this.longitude = parseFloat(data);
+        break;
+      case "sensors/altitude":
+        this.altitude = parseFloat(data);
+        break;
     }
 
-    this.sensorService.updateSensorData(updatedData);
+    if (Object.keys(updatedData).length > 0) {
+      this.sensorService.updateSensorData(updatedData);
+    }
+
+    if (
+      this.latitude !== null &&
+      this.longitude !== null &&
+      this.altitude !== null
+    ) {
+      this.sensorService.updateGeolocation(
+        this.latitude,
+        this.longitude,
+        this.altitude,
+      );
+    }
   }
 }
