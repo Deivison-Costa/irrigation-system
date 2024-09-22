@@ -25,73 +25,76 @@ export class CalculateEvapotranspirationUseCase {
       );
       const temperatureMaxKelvin = temperatureData.temp_max;
       const temperatureMinKelvin = temperatureData.temp_min;
+      console.log("Temperatura máxima no dia [kelvin]:", temperatureMaxKelvin);
+      console.log("Temperatura mínima no dia [kelvin]:", temperatureMinKelvin);
 
-      const J = Math.floor(
-        (new Date().getTime() -
-          new Date(new Date().getFullYear(), 0, 0).getTime()) /
-          (1000 * 60 * 60 * 24),
-      );
-      const t = () =>
-        parseFloat(
-          (new Date().getHours() + new Date().getMinutes() / 60).toFixed(2),
-        );
-      const t1 = 1 / 3600;
-      const latitude = geolocation.latitude * (Math.PI / 180);
-      const longitudeZ = -15 * (new Date().getTimezoneOffset() / 60);
-      const longitudeM = geolocation.longitude;
-      const seaZ = geolocation.altitude;
+      const TmaxC = temperatureMaxKelvin - 273.15;
+      const TminC = temperatureMinKelvin - 273.15;
+      const Tmean = (TmaxC + TminC) / 2;
+      console.log("Temperatura média [°C]:", Tmean);
 
-      const solarAngle = this.calculateSolarAngles(
-        J,
-        t(),
-        longitudeZ,
-        longitudeM,
-        t1,
-      );
-
+      // Solar Radiation
       const Rs = this.calculateSolarRadiation(luminosity);
-      console.log("Radiação solar [MJ m^-2 day-1]:", Rs);
+      console.log("Radiação solar [MJ m^-2 day^-1]:", Rs);
+
+      // Net Solar Radiation
       const Rns = this.calculateNetSolarRadiation(Rs);
-      console.log("Radiação solar líquida [W/m^2]:", Rns);
-      const Ra = this.calculateExtraterrestrialRadiation(
-        latitude,
-        solarAngle.omega1,
-        solarAngle.omega2,
-      );
+      console.log("Radiação solar líquida [MJ m^-2 day^-1]:", Rns);
+
+      // Extraterrestrial Radiation
+      const J = this.getJulianDay();
+      const latitude = geolocation.latitude * (Math.PI / 180);
+      const Ra = this.calculateExtraterrestrialRadiation(latitude, J);
       console.log("Radiação extraterrestre [MJ m^-2 day^-1]:", Ra);
-      const Rso = this.calculateClearSkyRadiation(Ra, seaZ);
+
+      // Clear Sky Solar Radiation
+      const Rso = this.calculateClearSkyRadiation(Ra, geolocation.altitude);
       console.log("Radiação solar de céu limpo [MJ m^-2 day^-1]:", Rso);
+
+      // Net Longwave Radiation
       const Rnl = this.calculateNetLongwaveRadiation(
         temperatureMaxKelvin,
         temperatureMinKelvin,
         Rs,
         Rso,
+        humidity,
       );
-      console.log("Radiação solar de ondas longas [MJ m^-2 day^-1]:", Rnl);
+      console.log("Radiação líquida de ondas longas [MJ m^-2 day^-1]:", Rnl);
+
+      // Net Radiation
       const Rn = this.calculateNetRadiation(Rns, Rnl);
       console.log("Radiação líquida [MJ m^-2 day^-1]:", Rn);
-      const es = this.calculateSaturationVaporPressure(
-        temperatureMaxKelvin,
-        temperatureMinKelvin,
-      );
-      console.log("Pressão de saturação [kPa]:", es);
-      const ea_actual = this.calculateActualVaporPressure(temperature);
-      console.log("Pressão de vapor atual [kPa]:", ea_actual);
-      const delta = this.calculateDelta(temperature);
-      console.log("Variação da pressão de saturação [kPa C°^-1]:", delta);
-      const G = this.calculateSoilHeatFlux(Rn);
+
+      // Delta (slope of the vapor pressure curve)
+      const delta = this.calculateDelta(Tmean);
+      console.log("Variação da pressão de vapor [kPa °C^-1]:", delta);
+
+      // Soil Heat Flux (G), generally zero for daily time steps
+      const G = 0;
       console.log("Fluxo de calor do solo [MJ m^-2 day^-1]:", G);
+
+      // Psychrometric Constant (gamma)
       const gamma = this.calculatePsychrometricConstant(pressure);
-      console.log("Constante psicométrica [kPa C°^-1]:", gamma);
+      console.log("Constante psicométrica [kPa °C^-1]:", gamma);
+
+      // Saturation Vapor Pressure (es)
+      const es = this.calculateSaturationVaporPressure(TmaxC, TminC);
+      console.log("Pressão de saturação do vapor [kPa]:", es);
+
+      // Actual Vapor Pressure (ea) using relative humidity
+      const ea = this.calculateActualVaporPressure(humidity, TminC);
+      console.log("Pressão de vapor atual [kPa]:", ea);
+
+      // ETo using FAO-56 Penman-Monteith Equation
       const ETo = this.calculateETo(
         Rn,
         G,
         delta,
         gamma,
-        temperature,
+        Tmean,
         windSpeed,
         es,
-        ea_actual,
+        ea,
       );
       sensor.ETo = ETo;
 
@@ -110,51 +113,11 @@ export class CalculateEvapotranspirationUseCase {
     const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=standard&appid=${this.apiOWKey}`;
     const response = await axios.get(url);
     const { temp_max, temp_min } = response.data.main;
-    console.log("Temperatura max e min [Kelvin]:", temp_max, "e", temp_min);
     return { temp_max, temp_min };
   }
 
-  private calculateSc(J: number): number {
-    const b = (2 * Math.PI * (J - 81)) / 364;
-    const Sc =
-      0.1645 * Math.sin(2 * b) - 0.1255 * Math.cos(b) - 0.025 * Math.sin(b);
-    return Sc;
-  }
-
-  private calculateOmega(
-    t: number,
-    Lz: number,
-    Lm: number,
-    Sc: number,
-  ): number {
-    return (Math.PI / 12) * (t + 0.06667 * (Lz - Lm) + Sc - 12);
-  }
-
-  private calculateOmega1AndOmega2(
-    omega: number,
-    t1: number,
-  ): { omega1: number; omega2: number } {
-    const delta = (Math.PI * t1) / 24;
-    const omega1 = omega - delta;
-    const omega2 = omega + delta;
-    return { omega1, omega2 };
-  }
-
-  public calculateSolarAngles(
-    J: number,
-    t: number,
-    Lz: number,
-    Lm: number,
-    t1: number,
-  ): { omega1: number; omega2: number } {
-    const Sc = this.calculateSc(J);
-    const omega = this.calculateOmega(t, Lz, Lm, Sc);
-    const { omega1, omega2 } = this.calculateOmega1AndOmega2(omega, t1);
-    return { omega1, omega2 };
-  }
-
   private calculateSolarRadiation(luminosity: number): number {
-    return (luminosity / 120) * 0.0864; // MJ m^2
+    return (luminosity / 120) * 0.0864; // MJ m^-2 day^-1
   }
 
   private calculateNetSolarRadiation(Rs: number): number {
@@ -163,37 +126,23 @@ export class CalculateEvapotranspirationUseCase {
 
   private calculateExtraterrestrialRadiation(
     latitude: number,
-    solarAngleInitial: number,
-    solarAngleFinal: number,
+    J: number,
   ): number {
-    const Gsc = 0.082; // MJ/m²/min, constante solar
-    const J = Math.floor(
-      (new Date().getTime() -
-        new Date(new Date().getFullYear(), 0, 0).getTime()) /
-        (1000 * 60 * 60 * 24),
-    );
-    console.log("Dia do ano:", J);
-    const dr = 1 + (0.033 * Math.cos((2 * Math.PI * J) / 365));
-    console.log("Distância relativa terra-sol:", dr);
-    const delta_m = 0.409 * Math.sin((2 * Math.PI * J) / 365 - 1.39);
-    console.log("Declinação solar:", delta_m)
-    const omega1 = solarAngleInitial;
-    const omega2 = solarAngleFinal;
-    console.log("Ângulo solar no início do periódo [rad]:", omega1);
-    console.log("Ângulo solar no fim do periódo [rad]:", omega2);
-    console.log("Latitude [rad]:", latitude);
-    return ( // preciso refazer esse cálculo na mão pois o resultado está anômalo
-      ((12 * 60) / Math.PI) *
+    const Gsc = 0.082; // MJ m^-2 min^-1
+    const dr = 1 + 0.033 * Math.cos((2 * Math.PI * J) / 365);
+    const delta = 0.409 * Math.sin((2 * Math.PI * J) / 365 - 1.39);
+    const omega_s = Math.acos(-Math.tan(latitude) * Math.tan(delta));
+    return (
+      ((24 * 60) / Math.PI) *
       Gsc *
       dr *
-      ((omega2 - omega1) * Math.sin(latitude) * Math.sin(delta_m) +
-        Math.cos(latitude) * Math.cos(delta_m) * Math.sin(omega2) -
-        Math.sin(omega1))
+      (omega_s * Math.sin(latitude) * Math.sin(delta) +
+        Math.cos(latitude) * Math.cos(delta) * Math.sin(omega_s))
     );
   }
 
-  private calculateClearSkyRadiation(Ra: number, elevation: number): number {
-    return (0.75 + 2 * 1e-5 * elevation) * Ra;
+  private calculateClearSkyRadiation(Ra: number, altitude: number): number {
+    return (0.75 + 2e-5 * altitude) * Ra;
   }
 
   private calculateNetLongwaveRadiation(
@@ -201,14 +150,16 @@ export class CalculateEvapotranspirationUseCase {
     TminK: number,
     Rs: number,
     Rso: number,
+    humidity: number,
   ): number {
-    const sigma = 4.903e-9; // Constante de Stefan-Boltzmann
-    const ea_actual = this.calculateActualVaporPressure(TminK);
-
+    const sigma = 4.903e-9; // Stefan-Boltzmann constant MJ K^-4 m^-2 day^-1
+    const TminC = TminK - 273.15;
+    const ea =
+      (humidity / 100) * this.calculateSaturationVaporPressure(TminC, TminC);
     return (
       sigma *
       ((TmaxK ** 4 + TminK ** 4) / 2) *
-      (0.34 - 0.14 * Math.sqrt(ea_actual)) *
+      (0.34 - 0.14 * Math.sqrt(ea)) *
       (1.35 * (Rs / Rso) - 0.35)
     );
   }
@@ -217,39 +168,34 @@ export class CalculateEvapotranspirationUseCase {
     return Rns - Rnl;
   }
 
-  private calculateSaturationVaporPressure(
-    TmaxK: number,
-    TminK: number,
-  ): number {
+  private calculateDelta(Tmean: number): number {
     return (
-      (0.6108 * Math.exp((17.27 * TmaxK) / (TmaxK + 237.3)) +
-        0.6108 * Math.exp((17.27 * TminK) / (TminK + 237.3))) /
-      2 /
-      1000
+      (4098 * (0.6108 * Math.exp((17.27 * Tmean) / (Tmean + 237.3)))) /
+      Math.pow(Tmean + 237.3, 2)
     );
-  }
-
-  private calculateActualVaporPressure(temperature: number): number {
-    return (
-      (0.6108 * Math.exp((17.27 * temperature) / (temperature + 237.3))) / 1000
-    );
-  }
-
-  private calculateDelta(temperature: number): number {
-    return (
-      (4098 *
-        (0.6108 * Math.exp((17.27 * temperature) / (temperature + 237.3)))) /
-      (temperature + 237.3) ** 2 /
-      1000
-    );
-  }
-
-  private calculateSoilHeatFlux(Rn: number): number {
-    return Rn > 0 ? 0.1 * Rn : 0.5 * Rn;
   }
 
   private calculatePsychrometricConstant(pressure: number): number {
-    return 0.665 * 1e-3 * (pressure / 1000);
+    return 0.665e-3 * pressure; // kPa °C^-1
+  }
+
+  private calculateSaturationVaporPressure(
+    TmaxC: number,
+    TminC: number,
+  ): number {
+    return (
+      (0.6108 * Math.exp((17.27 * TmaxC) / (TmaxC + 237.3)) +
+        0.6108 * Math.exp((17.27 * TminC) / (TminC + 237.3))) /
+      2
+    );
+  }
+
+  private calculateActualVaporPressure(
+    humidity: number,
+    TminC: number,
+  ): number {
+    const esTmin = 0.6108 * Math.exp((17.27 * TminC) / (TminC + 237.3)); // Saturation vapor pressure at Tmin
+    return (humidity / 100) * esTmin;
   }
 
   private calculateETo(
@@ -257,15 +203,23 @@ export class CalculateEvapotranspirationUseCase {
     G: number,
     delta: number,
     gamma: number,
-    temperature: number,
+    Tmean: number,
     windSpeed: number,
     es: number,
-    ea_actual: number,
+    ea: number,
   ): number {
     return (
       (0.408 * delta * (Rn - G) +
-        gamma * (900 / (temperature + 273)) * windSpeed * (es - ea_actual)) /
+        gamma * (900 / (Tmean + 273)) * windSpeed * (es - ea)) /
       (delta + gamma * (1 + 0.34 * windSpeed))
+    );
+  }
+
+  private getJulianDay(): number {
+    return Math.floor(
+      (new Date().getTime() -
+        new Date(new Date().getFullYear(), 0, 0).getTime()) /
+        (1000 * 60 * 60 * 24),
     );
   }
 }

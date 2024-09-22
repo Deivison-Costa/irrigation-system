@@ -14,7 +14,7 @@ describe("CalculateEvapotranspirationUseCase", () => {
 
   beforeEach(() => {
     useCase = new CalculateEvapotranspirationUseCase();
-    sensor = new Sensor(25, 60, 5, 1013, 800, 30);
+    sensor = new Sensor(25, 60, 5, 1013, 10000, 30);
     geolocation = { latitude: -23.55, longitude: -46.63, altitude: 760 };
   });
 
