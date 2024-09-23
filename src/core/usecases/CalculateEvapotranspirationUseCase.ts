@@ -33,25 +33,20 @@ export class CalculateEvapotranspirationUseCase {
       const Tmean = (TmaxC + TminC) / 2;
       console.log("Temperatura média [°C]:", Tmean);
 
-      // Solar Radiation
       const Rs = this.calculateSolarRadiation(luminosity);
       console.log("Radiação solar [MJ m^-2 day^-1]:", Rs);
 
-      // Net Solar Radiation
       const Rns = this.calculateNetSolarRadiation(Rs);
       console.log("Radiação solar líquida [MJ m^-2 day^-1]:", Rns);
 
-      // Extraterrestrial Radiation
       const J = this.getJulianDay();
       const latitude = geolocation.latitude * (Math.PI / 180);
       const Ra = this.calculateExtraterrestrialRadiation(latitude, J);
       console.log("Radiação extraterrestre [MJ m^-2 day^-1]:", Ra);
 
-      // Clear Sky Solar Radiation
       const Rso = this.calculateClearSkyRadiation(Ra, geolocation.altitude);
       console.log("Radiação solar de céu limpo [MJ m^-2 day^-1]:", Rso);
 
-      // Net Longwave Radiation
       const Rnl = this.calculateNetLongwaveRadiation(
         temperatureMaxKelvin,
         temperatureMinKelvin,
@@ -61,31 +56,24 @@ export class CalculateEvapotranspirationUseCase {
       );
       console.log("Radiação líquida de ondas longas [MJ m^-2 day^-1]:", Rnl);
 
-      // Net Radiation
       const Rn = this.calculateNetRadiation(Rns, Rnl);
       console.log("Radiação líquida [MJ m^-2 day^-1]:", Rn);
 
-      // Delta (slope of the vapor pressure curve)
       const delta = this.calculateDelta(Tmean);
       console.log("Variação da pressão de vapor [kPa °C^-1]:", delta);
 
-      // Soil Heat Flux (G), generally zero for daily time steps
       const G = 0;
       console.log("Fluxo de calor do solo [MJ m^-2 day^-1]:", G);
 
-      // Psychrometric Constant (gamma)
       const gamma = this.calculatePsychrometricConstant(pressure);
       console.log("Constante psicométrica [kPa °C^-1]:", gamma);
 
-      // Saturation Vapor Pressure (es)
       const es = this.calculateSaturationVaporPressure(TmaxC, TminC);
       console.log("Pressão de saturação do vapor [kPa]:", es);
 
-      // Actual Vapor Pressure (ea) using relative humidity
       const ea = this.calculateActualVaporPressure(humidity, TminC);
       console.log("Pressão de vapor atual [kPa]:", ea);
 
-      // ETo using FAO-56 Penman-Monteith Equation
       const ETo = this.calculateETo(
         Rn,
         G,
@@ -99,7 +87,7 @@ export class CalculateEvapotranspirationUseCase {
       sensor.ETo = ETo;
 
       console.log(
-        `Evapotranspiração de Referência (ETo): ${ETo.toFixed(2)} mm/dia`,
+        `Evapotranspiração de Referência (ETo): ${ETo.toFixed(6)} mm/dia`,
       );
     } catch (error) {
       console.error("Erro ao calcular a evapotranspiração:", error);
