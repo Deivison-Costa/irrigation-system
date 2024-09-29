@@ -23,4 +23,4 @@ const mqttOptions = {
 const mqttClient = new MqttClient(sensorService, mqttUrl, mqttOptions);
 
 const server = new Server(sensorService, mqttClient);
-server.start(3000);
+server.start(3001);
