@@ -25,28 +25,17 @@ export class CalculateEvapotranspirationUseCase {
       );
       const temperatureMaxKelvin = temperatureData.temp_max;
       const temperatureMinKelvin = temperatureData.temp_min;
-      console.log("Temperatura máxima no dia [kelvin]:", temperatureMaxKelvin);
-      console.log("Temperatura mínima no dia [kelvin]:", temperatureMinKelvin);
 
+      // Calculando variáveis intermediárias
       const TmaxC = temperatureMaxKelvin - 273.15;
       const TminC = temperatureMinKelvin - 273.15;
       const Tmean = (TmaxC + TminC) / 2;
-      console.log("Temperatura média [°C]:", Tmean);
-
       const Rs = this.calculateSolarRadiation(luminosity);
-      console.log("Radiação solar [MJ m^-2 day^-1]:", Rs);
-
       const Rns = this.calculateNetSolarRadiation(Rs);
-      console.log("Radiação solar líquida [MJ m^-2 day^-1]:", Rns);
-
       const J = this.getJulianDay();
       const latitude = geolocation.latitude * (Math.PI / 180);
       const Ra = this.calculateExtraterrestrialRadiation(latitude, J);
-      console.log("Radiação extraterrestre [MJ m^-2 day^-1]:", Ra);
-
       const Rso = this.calculateClearSkyRadiation(Ra, geolocation.altitude);
-      console.log("Radiação solar de céu limpo [MJ m^-2 day^-1]:", Rso);
-
       const Rnl = this.calculateNetLongwaveRadiation(
         temperatureMaxKelvin,
         temperatureMinKelvin,
@@ -54,29 +43,14 @@ export class CalculateEvapotranspirationUseCase {
         Rso,
         humidity,
       );
-      console.log("Radiação líquida de ondas longas [MJ m^-2 day^-1]:", Rnl);
-
       const Rn = this.calculateNetRadiation(Rns, Rnl);
-      console.log("Radiação líquida [MJ m^-2 day^-1]:", Rn);
-
       const delta = this.calculateDelta(Tmean);
-      console.log("Variação da pressão de vapor [kPa °C^-1]:", delta);
-
-      const G = 0;
-      console.log("Fluxo de calor do solo [MJ m^-2 day^-1]:", G);
-
       const gamma = this.calculatePsychrometricConstant(pressure);
-      console.log("Constante psicométrica [kPa °C^-1]:", gamma);
-
       const es = this.calculateSaturationVaporPressure(TmaxC, TminC);
-      console.log("Pressão de saturação do vapor [kPa]:", es);
-
       const ea = this.calculateActualVaporPressure(humidity, TminC);
-      console.log("Pressão de vapor atual [kPa]:", ea);
-
       const ETo = this.calculateETo(
         Rn,
-        G,
+        0, // G (Fluxo de calor do solo) = 0
         delta,
         gamma,
         Tmean,
@@ -84,11 +58,25 @@ export class CalculateEvapotranspirationUseCase {
         es,
         ea,
       );
+
+      // Atualizando as variáveis intermediárias no sensor
+      sensor.TmaxC = TmaxC;
+      sensor.TminC = TminC;
+      sensor.Tmean = Tmean;
+      sensor.Rs = Rs;
+      sensor.Rns = Rns;
+      sensor.Ra = Ra;
+      sensor.Rso = Rso;
+      sensor.Rnl = Rnl;
+      sensor.Rn = Rn;
+      sensor.delta = delta;
+      sensor.gamma = gamma;
+      sensor.es = es;
+      sensor.ea = ea;
       sensor.ETo = ETo;
 
-      console.log(
-        `Evapotranspiração de Referência (ETo): ${ETo.toFixed(6)} mm/dia`,
-      );
+      console.log(`Evapotranspiração de Referência (ETo): ${ETo.toFixed(6)} mm/dia`);
+
     } catch (error) {
       console.error("Erro ao calcular a evapotranspiração:", error);
     }
