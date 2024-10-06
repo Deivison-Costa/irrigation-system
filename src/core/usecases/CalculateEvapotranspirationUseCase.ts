@@ -75,8 +75,9 @@ export class CalculateEvapotranspirationUseCase {
       sensor.ea = ea;
       sensor.ETo = ETo;
 
-      console.log(`Evapotranspiração de Referência (ETo): ${ETo.toFixed(6)} mm/dia`);
-
+      console.log(
+        `Evapotranspiração de Referência (ETo): ${ETo.toFixed(6)} mm/dia`,
+      );
     } catch (error) {
       console.error("Erro ao calcular a evapotranspiração:", error);
     }
