@@ -1,6 +1,6 @@
-import { Sensor } from '../entities/Sensor'
+import { Sensor } from "../entities/Sensor";
 
 export interface ISensorRepository {
   getSensorData(): Sensor;
-  saveSensorData(sensor: Sensor): void
+  saveSensorData(sensor: Sensor): void;
 }

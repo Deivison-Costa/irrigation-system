@@ -1,23 +1,26 @@
-import { SensorService } from './core/services/SensorService'
-import { MqttClient } from './infrastructure/mqtt/MqttClient'
-import { Server } from './infrastructure/http/Server'
-import * as fs from 'fs'
-import env from './env/env'
+import { SensorService } from "./core/services/SensorService";
+import { MqttClient } from "./infrastructure/mqtt/MqttClient";
+import { Server } from "./infrastructure/http/Server";
+import { SensorRepository } from "./infrastructure/repositories/SensorRepository";
+import * as fs from "fs";
+import env from "./env/env";
 
-const sensorService = new SensorService()
+const sensorRepository = new SensorRepository();
 
-const caFilePath = env.EMQX_PATH_CA
-const caCert = fs.readFileSync(caFilePath)
+const sensorService = new SensorService(sensorRepository);
 
-const mqttUrl = env.MQTT_URL
+const caFilePath = env.EMQX_PATH_CA;
+const caCert = fs.readFileSync(caFilePath);
+
+const mqttUrl = env.MQTT_URL;
 const mqttOptions = {
   clientId: env.MQTT_CLIENT_ID,
   username: env.MQTT_USERNAME,
   password: env.MQTT_PASSWORD,
   ca: [caCert],
-}
+};
 
-new MqttClient(sensorService, mqttUrl, mqttOptions)
+const mqttClient = new MqttClient(sensorService, mqttUrl, mqttOptions);
 
-const server = new Server(sensorService)
-server.start(3000)
+const server = new Server(sensorService, mqttClient);
+server.start(3001);

@@ -1,18 +1,18 @@
-import { Sensor } from '../../core/entities/Sensor'
-import { ISensorRepository } from '../../core/repositories/ISensorRepository'
+import { Sensor } from "../../core/entities/Sensor";
+import { ISensorRepository } from "../../core/repositories/ISensorRepository";
 
 export class SensorRepository implements ISensorRepository {
-  private sensor: Sensor
+  private sensor: Sensor;
 
   constructor() {
-    this.sensor = new Sensor()
+    this.sensor = new Sensor();
   }
 
   getSensorData(): Sensor {
-    return this.sensor
+    return this.sensor;
   }
 
   saveSensorData(sensor: Sensor): void {
-    this.sensor = sensor
+    this.sensor = sensor;
   }
 }
